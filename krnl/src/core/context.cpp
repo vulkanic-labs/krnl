@@ -16,11 +16,11 @@ namespace krnl
 
         if (!m_Instance)
         {
-            KRNL_ERROR("Failed to create WebGPU instance");
+            KRNL_ERROR("Failed to create GPU instance");
             std::exit(EXIT_FAILURE);
         }
 
-        KRNL_LOG("WebGPU instance created successfully");
+        KRNL_LOG("Instance created successfully");
     }
 
     Context::~Context()

@@ -131,18 +131,16 @@ namespace krnl
 		wgpu::CommandBuffer commands = encoder.Finish(&cmdBufDesc);
 		queue.Submit(1, &commands);
 
-
-
-		bool done = false;
 		wgpu::Future f = m_mapBuffer.MapAsync(wgpu::MapMode::Read, 0, m_bufferSize, wgpu::CallbackMode::WaitAnyOnly, [&](wgpu::MapAsyncStatus status, wgpu::StringView message) {
 			if (status == wgpu::MapAsyncStatus::Success) {
 				const float* output = (const float*)m_mapBuffer.GetConstMappedRange(0, m_bufferSize);
 				for (int i = 0; i < input.size(); ++i) {
 					std::cout << i + 1 << " : input " << input[i] << " became " << output[i] << std::endl;
+					std::cout << ((input[i] + 1 == output[i]) ? "PASS" : "FAIL") << std::endl;
 				}
 				m_mapBuffer.Unmap();
 			}
-			done = true;
+		
 			});
 
 		/*while (!done)

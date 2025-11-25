@@ -1,8 +1,5 @@
 #include "core/device.hpp"
 #include "core/log.h"
-#include <vector>
-#include <iostream>
-
 
 namespace krnl
 {
@@ -25,12 +22,22 @@ namespace krnl
 
 		instance.WaitAny(f1, UINT64_MAX);
 
+		wgpu::AdapterInfo adapterInfo;
+		adapter.GetInfo(&adapterInfo);
+
+		KRNL_LOG("GPU Adapter Info:");
+		KRNL_LOG("  Vendor: " << adapterInfo.vendor);
+		KRNL_LOG("  Architecture: " << adapterInfo.architecture);
+		KRNL_LOG("  Device: " << adapterInfo.device);
+		KRNL_LOG("  Description: " << adapterInfo.description);
+		KRNL_LOG("  Backend: " << adapterInfo.backendType);
+
 		wgpu::DeviceDescriptor desc{};
 		desc.SetUncapturedErrorCallback([](const wgpu::Device&,
 			wgpu::ErrorType errorType,
 			wgpu::StringView message)
-			{ 
-				KRNL_ERROR("WebGPU Device Error: " << errorType << message);
+			{
+				KRNL_ERROR("Device Error: " << errorType << message);
 			});
 
 		desc.SetDeviceLostCallback(wgpu::CallbackMode::AllowProcessEvents,
@@ -38,7 +45,7 @@ namespace krnl
 				wgpu::DeviceLostReason reason,
 				wgpu::StringView message)
 			{
-				KRNL_ERROR("WebGPU Device Lost: " << reason << message);
+				KRNL_ERROR("Device Lost: " << reason << message);
 			});
 
 
@@ -56,7 +63,7 @@ namespace krnl
 			});
 		instance.WaitAny(f2, UINT64_MAX);
 
-		KRNL_LOG("WebGPU device created successfully");
+		KRNL_LOG("Device acquired successfully");
 	}
 
 } // namespace krnl
