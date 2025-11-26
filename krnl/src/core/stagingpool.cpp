@@ -1,4 +1,4 @@
-#include "core/staging_pool.hpp"
+#include "core/stagingpool.hpp"
 #include "core/log.h"
 #include <algorithm>
 #include <cstring>
@@ -38,7 +38,7 @@ namespace krnl {
         // mappedAtCreation => GetMappedRange returns pointer
         void* mapped = staging.GetMappedRange();
         if (!mapped) {
-            KRNL_WARN("PersistentStagingPool::createStaging mappedAtCreation returned nullptr (size=%zu)", size);
+            KRNL_WARN("PersistentStagingPool::createStaging mappedAtCreation returned nullptr"<< size);
         }
 
         auto h = std::make_shared<StagingHandle>();
@@ -103,7 +103,7 @@ namespace krnl {
             return nullptr;
         }
         if (bytes > staging->size) {
-            KRNL_ERROR("submitUpload: bytes (%zu) > staging size (%zu)", bytes, staging->size);
+            KRNL_ERROR("submitUpload: bytes > staging size "<< bytes << staging->size);
             return nullptr;
         }
 

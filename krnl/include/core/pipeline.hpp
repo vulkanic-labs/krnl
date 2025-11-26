@@ -2,8 +2,8 @@
 #include <webgpu/webgpu_cpp.h>
 #include <string>
 #include <memory>
-#include "krnl_parameter_set.hpp" // ParameterSet header (expects krnl::ParameterSet)
-#include "krnl_buffer.hpp"        // Buffer header (for type info if needed)
+#include "core/parameterset.hpp" // ParameterSet header (expects krnl::ParameterSet)
+#include "core/buffer.hpp"        // Buffer header (for type info if needed)
 
 namespace krnl {
 

@@ -2,7 +2,7 @@
 #include <vector>
 #include <memory>
 #include <webgpu/webgpu_cpp.h>
-#include "krnl_buffer.hpp"
+#include "core/buffer.hpp"
 
 namespace krnl {
 

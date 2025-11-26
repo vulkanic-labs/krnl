@@ -64,8 +64,6 @@ namespace krnl {
 				(m_usage & wgpu::BufferUsage::CopyDst) != 0;
 		}
 
-		uint64_t size() const { return m_size; }
-
 		// Uniform buffers must be aligned to 256 bytes
 		uint64_t sizeAlignedToUniform() const {
 			uint64_t align = 256;
