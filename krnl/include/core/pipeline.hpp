@@ -4,32 +4,17 @@
 #include <memory>
 #include "core/parameterset.hpp" // ParameterSet header (expects krnl::ParameterSet)
 #include "core/buffer.hpp"        // Buffer header (for type info if needed)
+#include "core/device.hpp"
+#include "core/shader.hpp"
 
 namespace krnl {
 
-    /**
-     * Pipeline (compute)
-     *
-     * Lightweight wrapper for a compute pipeline.
-     * - Builds pipeline layout using the provided ParameterSet
-     * - Optionally creates shader module from WGSL source
-     * - Provides encodeDispatch(pass, x,y,z) to set pipeline, bind group and dispatch
-     */
     class Pipeline {
     public:
-        // Build from WGSL text
-        static Pipeline CreateComputeFromWGSL(
-            wgpu::Device device,
-            const std::string& wgslSource,
-            ParameterSet& params,
-            const std::string& entryPoint = "main",
-            const char* label = nullptr
-        );
-
         // Build from an existing shader module
-        static Pipeline CreateComputeFromModule(
-            wgpu::Device device,
-            const wgpu::ShaderModule& module,
+        static Pipeline CreateCompute(
+            const Device& device,
+            const Shader& module,
             ParameterSet& params,
             const std::string& entryPoint = "main",
             const char* label = nullptr
@@ -55,7 +40,7 @@ namespace krnl {
         void buildPipeline(const wgpu::ShaderModule& module, const std::string& entryPoint, const char* label);
 
     private:
-        wgpu::Device m_device;
+        Device m_device;
         wgpu::PipelineLayout m_pipelineLayout;
         wgpu::ComputePipeline m_pipeline;
         wgpu::ShaderModule m_shaderModule;

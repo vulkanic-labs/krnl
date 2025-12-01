@@ -29,6 +29,31 @@ namespace krnl {
         m_Buffer = m_Device.GetNative().CreateBuffer(&desc);
     }
 
+    Future Buffer::MapAsync(MapMode mode, size_t offset, size_t size ,void* data) {
+        assert(m_Buffer);
+		wgpu::MapMode wgpuMode = static_cast<wgpu::MapMode>(mode);
+        return m_Buffer.MapAsync(wgpuMode, 0, size, wgpu::CallbackMode::WaitAnyOnly,
+            [&](wgpu::MapAsyncStatus status, wgpu::StringView message) {
+                if (status == wgpu::MapAsyncStatus::Success) {
+                    const void* mapped = m_Buffer.GetConstMappedRange(offset, size);
+                    memcpy(data, mapped, size);
+					KRNL_LOG("Buffer mapped successfully");
+                }
+                else {
+					KRNL_ERROR("Buffer mapping failed: " << message);
+                }
+            });
+	}
+
+    void Buffer::WriteBuffer(const void* src, size_t bytes, size_t dstOffset) {
+        assert(m_Buffer);
+        if (bytes + dstOffset > m_size) {
+            KRNL_ERROR("Buffer::WriteBuffer => out of range write (requested " << bytes << " bytes at offset " << dstOffset << ", buffer size " << m_size << ")");
+            return;
+        }
+        m_Device.GetNative().GetQueue().WriteBuffer(m_Buffer, static_cast<uint64_t>(dstOffset), src, bytes);
+	}
+
 
 
 

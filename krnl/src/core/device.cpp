@@ -4,13 +4,13 @@
 namespace krnl
 {
 
-	Device::Device(wgpu::Instance instance)
+	Device::Device(const Instance& instance)
 	{
 		wgpu::Adapter adapter;
 		wgpu::RequestAdapterOptions options{};
 		options.powerPreference = wgpu::PowerPreference::HighPerformance;
 		wgpu::Future f1 =
-			instance.RequestAdapter(&options, wgpu::CallbackMode::WaitAnyOnly,
+			instance.GetNative().RequestAdapter(&options, wgpu::CallbackMode::WaitAnyOnly,
 				[&adapter](wgpu::RequestAdapterStatus status, wgpu::Adapter a,
 					wgpu::StringView message)
 				{

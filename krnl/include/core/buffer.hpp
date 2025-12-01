@@ -1,6 +1,7 @@
 #pragma once
 #include <webgpu/webgpu_cpp.h>
 #include "core/device.hpp"
+#include "core/future.hpp"
 #include <cstddef>
 #include <vector>
 #include <functional>
@@ -9,13 +10,19 @@
 
 namespace krnl {
 
+    enum class MapMode : uint64_t {
+		None = wgpu::MapMode::None,
+        Read = wgpu::MapMode::Read,
+        Write = wgpu::MapMode::Write,
+	};
+
     enum class BufferUsageType : uint64_t {
-        Storage = static_cast<uint64_t>(wgpu::BufferUsage::Storage),
-        Uniform = static_cast<uint64_t>(wgpu::BufferUsage::Uniform),
-        CopySrc = static_cast<uint64_t>(wgpu::BufferUsage::CopySrc),
-        CopyDst = static_cast<uint64_t>(wgpu::BufferUsage::CopyDst),
-        MapRead = static_cast<uint64_t>(wgpu::BufferUsage::MapRead),
-        MapWrite = static_cast<uint64_t>(wgpu::BufferUsage::MapWrite)
+        Storage = wgpu::BufferUsage::Storage,
+        Uniform = wgpu::BufferUsage::Uniform,
+        CopySrc =wgpu::BufferUsage::CopySrc,
+        CopyDst = wgpu::BufferUsage::CopyDst,
+        MapRead = wgpu::BufferUsage::MapRead,
+        MapWrite =wgpu::BufferUsage::MapWrite
     };
 
     inline BufferUsageType operator|(BufferUsageType a, BufferUsageType b) {
@@ -57,6 +64,9 @@ namespace krnl {
         Buffer() = default;
         //Buffer(wgpu::Device device, wgpu::Buffer buffer, size_t sizeBytes, Type type, wgpu::BufferUsage usage);
 		Buffer(Device& device, size_t sizeBytes, BufferUsageType usage, std::string label , bool mappedAtCreation = false);
+
+		Future MapAsync(MapMode mode, size_t offset, size_t size ,void* data);
+		void WriteBuffer(const void* src, size_t bytes, size_t dstOffset = 0);
 
         wgpu::Buffer GetNative() const { return m_Buffer; }
         size_t GetSize() const { return m_size; }

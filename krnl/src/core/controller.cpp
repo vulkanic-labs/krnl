@@ -1,6 +1,5 @@
 #include "core/controller.hpp"
 
-#include "core/context.hpp"
 #include "core/device.hpp"
 #include "core/shader.hpp"
 #include "core/log.h"
@@ -8,6 +7,7 @@
 #include "core/parameterset.hpp"
 #include "core/pipeline.hpp"
 #include "core/stagingpool.hpp"
+#include "core/future.hpp"
 
 #include <memory>
 #include <webgpu/webgpu_cpp.h>
@@ -17,11 +17,10 @@ namespace krnl
 {
 	Controller::Controller()
 	{
-		wgpu::Instance instance = m_context.getInstance();
-		m_device = Device(instance);
+		m_device = Device(m_instance);
 		wgpu::Queue queue = m_device.getQueue();
 
-		wgpu::ShaderModule computeShadeModule = loadWGSL(m_device.GetNative(), R"(
+		Shader computeShader = Shader::loadWGSL(m_device, R"(
 			@group(0) @binding(0) var<storage,read> inputBuffer: array<f32,64>;
 			@group(0) @binding(1) var<storage,read_write> outputBuffer: array<f32,64>;
 			@compute @workgroup_size(32)
@@ -41,9 +40,9 @@ namespace krnl
 		paramEntries.push_back({ output, krnl::BufferBindingType::Storage });
 		ParameterSet params(m_device, paramEntries);
 
-		auto pipeline = Pipeline::CreateComputeFromModule(
-			m_device.GetNative(),
-			computeShadeModule,
+		auto pipeline = Pipeline::CreateCompute(
+			m_device,
+			computeShader,
 			params,
 			"main",
 			"ComputeAddOne"
@@ -55,7 +54,8 @@ namespace krnl
 			inputData[i] = static_cast<float>(i);
 		}
 
-		queue.WriteBuffer(input.GetNative(), 0, inputData.data(), bufferSize);
+		input.WriteBuffer(inputData.data(), bufferSize, 0);
+
 		// Command encoder & compute pass
 		wgpu::CommandEncoder encoder = m_device.GetNative().CreateCommandEncoder();
 		wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
@@ -72,27 +72,36 @@ namespace krnl
 		wgpu::CommandBuffer cmd = encoder.Finish();
 		queue.Submit(1, &cmd);
 
-		// Readback
-		wgpu::Future f = map.GetNative().MapAsync(wgpu::MapMode::Read, 0, bufferSize, wgpu::CallbackMode::WaitAnyOnly,
-			[&](wgpu::MapAsyncStatus status, wgpu::StringView message) {
-				if (status == wgpu::MapAsyncStatus::Success) {
-					const float* output = (const float*)map.GetNative().GetConstMappedRange(0, bufferSize);
-					if (output) {
-						for (size_t i = 0; i < inputData.size(); ++i)
-							std::cout << i + 1 << " : input " << inputData[i] << " became " << output[i] << std::endl;
-						map.GetNative().Unmap();
-					}
-					else {
-						std::cerr << "GetConstMappedRange returned null\n";
-					}
-				}
-				else {
-					std::cerr << "MapAsync failed: " << /*message*/ "(empty)" << "\n";
-				}
-			});
+		std::vector<float> outputData(bufferSize / sizeof(float), 0.0f);
+		Future f = map.MapAsync(krnl::MapMode::Read, 0, bufferSize, outputData.data());
+		m_instance.WaitAny(f, UINT64_MAX);
+
+		for (size_t i = 0; i < inputData.size(); ++i)
+			std::cout << i + 1 << " : input " << inputData[i] << " became " << outputData[i] << std::endl;
+
+		m_instance.ProcessEvents();
 
 
-		instance.WaitAny(f, UINT64_MAX);
+		//// Readback
+		//wgpu::Future f = map.GetNative().MapAsync(wgpu::MapMode::Read, 0, bufferSize, wgpu::CallbackMode::WaitAnyOnly,
+		//	[&](wgpu::MapAsyncStatus status, wgpu::StringView message) {
+		//		if (status == wgpu::MapAsyncStatus::Success) {
+		//			const float* output = (const float*)map.GetNative().GetConstMappedRange(0, bufferSize);
+		//			if (output) {
+		//				for (size_t i = 0; i < inputData.size(); ++i)
+		//					std::cout << i + 1 << " : input " << inputData[i] << " became " << output[i] << std::endl;
+		//				map.GetNative().Unmap();
+		//			}
+		//			else {
+		//				std::cerr << "GetConstMappedRange returned null\n";
+		//			}
+		//		}
+		//		else {
+		//			std::cerr << "MapAsync failed: " << /*message*/ "(empty)" << "\n";
+		//		}
+		//	});
+
+		//m_instance.WaitAny(f, UINT64_MAX);
 
 		// =====================================================================================
 		// WGSL SHADER

@@ -1,6 +1,6 @@
 #pragma once
 #include <memory>
-#include "core/context.hpp" 
+#include "core/instance.hpp" 
 #include "core/device.hpp"
 
 namespace krnl
@@ -12,7 +12,7 @@ namespace krnl
 		~Controller();
 
 	private:
-		Context m_context;
+		Instance m_instance;
 		Device m_device;
 	};
 }

@@ -5,29 +5,10 @@
 
 namespace krnl {
 
-	/* static factory: from WGSL source */
-	Pipeline Pipeline::CreateComputeFromWGSL(
-		wgpu::Device device,
-		const std::string& wgslSource,
-		ParameterSet& params,
-		const std::string& entryPoint,
-		const char* label)
-	{
-		Pipeline p;
-		p.m_device = device;
-		p.m_params = &params;
-
-		// Create shader module
-		p.m_shaderModule = loadWGSL(device, wgslSource);
-
-		p.buildPipeline(p.m_shaderModule, entryPoint, label);
-		return p;
-	}
-
 	/* static factory: from shader module */
-	Pipeline Pipeline::CreateComputeFromModule(
-		wgpu::Device device,
-		const wgpu::ShaderModule& module,
+	Pipeline Pipeline::CreateCompute(
+		const Device& device,
+		const Shader& module,
 		ParameterSet& params,
 		const std::string& entryPoint,
 		const char* label)
@@ -35,7 +16,7 @@ namespace krnl {
 		Pipeline p;
 		p.m_device = device;
 		p.m_params = &params;
-		p.m_shaderModule = module;
+		p.m_shaderModule = module.GetNative();
 		p.buildPipeline(p.m_shaderModule, entryPoint, label);
 		return p;
 	}
@@ -52,7 +33,7 @@ namespace krnl {
 		// pipelineLayoutDesc.pushConstantRangeCount = 0; // Uncomment if needed
 		// pipelineLayoutDesc.pushConstantRanges = nullptr; // Uncomment if needed
 
-		m_pipelineLayout = m_device.CreatePipelineLayout(&pipelineLayoutDesc);
+		m_pipelineLayout = m_device.GetNative().CreatePipelineLayout(&pipelineLayoutDesc);
 
 		// Create compute pipeline
 		wgpu::ComputePipelineDescriptor pipelineDesc{};
@@ -64,7 +45,7 @@ namespace krnl {
 			pipelineDesc.label = label;
 		}
 
-		m_pipeline = m_device.CreateComputePipeline(&pipelineDesc);
+		m_pipeline = m_device.GetNative().CreateComputePipeline(&pipelineDesc);
 	}
 
 	/* set push constants data (stored locally) */

@@ -1,4 +1,4 @@
-#include "core/context.hpp"
+#include "core/instance.hpp"
 #include "core/device.hpp"
 #include "core/log.h"
 
@@ -7,7 +7,7 @@
 namespace krnl
 {
 
-    Context::Context()
+    Instance::Instance()
     {
         static const auto kTimedWaitAny = wgpu::InstanceFeatureName::TimedWaitAny;
         wgpu::InstanceDescriptor desc = {.requiredFeatureCount = 1,
@@ -23,7 +23,7 @@ namespace krnl
         KRNL_LOG("Instance created successfully");
     }
 
-    Context::~Context()
+    Instance::~Instance()
     {
     }
 

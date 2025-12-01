@@ -1,5 +1,6 @@
 #pragma once
 #include <webgpu/webgpu_cpp.h>
+#include "core/instance.hpp"
 
 namespace krnl
 {
@@ -8,7 +9,7 @@ namespace krnl
     {
     public:
         Device() = default;
-        Device(wgpu::Instance instance);
+        Device(const Instance& instance);
 		~Device() = default;
         wgpu::Device GetNative() const { return m_device; }
 		wgpu::Queue getQueue() const { return m_device.GetQueue(); }

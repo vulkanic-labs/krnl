@@ -23,4 +23,18 @@ namespace krnl
 		return loadWGSL(device, src);
 	}
 
+	Shader Shader::loadWGSL(const Device& device, const std::string& source)
+	{
+		wgpu::ShaderModule shaderModule = krnl::loadWGSL(device.GetNative(), source);
+		return Shader(shaderModule);
+	}
+
+	Shader Shader::readWGSL(const Device& device, std::filesystem::path path)
+	{
+		wgpu::ShaderModule shaderModule = krnl::readWGSL(device.GetNative(), path);
+		return Shader(shaderModule);
+	}
+
+	
+
 } // namespace krnl
