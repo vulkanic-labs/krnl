@@ -37,8 +37,8 @@ namespace krnl
 		Buffer map(m_device, bufferSize, BufferUsageType::CopyDst | BufferUsageType::MapRead, "map");
 
 		std::vector<krnl::ParameterSet::Entry> paramEntries;
-		paramEntries.push_back({ &input, wgpu::ShaderStage::Compute, wgpu::BufferBindingType::ReadOnlyStorage });
-		paramEntries.push_back({ &output, wgpu::ShaderStage::Compute, wgpu::BufferBindingType::Storage });
+		paramEntries.push_back({ input,  krnl::BufferBindingType::ReadOnlyStorage });
+		paramEntries.push_back({ output, krnl::BufferBindingType::Storage });
 		ParameterSet params(m_device, paramEntries);
 
 		auto pipeline = Pipeline::CreateComputeFromModule(

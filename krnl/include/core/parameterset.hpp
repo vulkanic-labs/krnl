@@ -7,13 +7,18 @@
 
 namespace krnl {
 
+    enum class BufferBindingType : uint64_t {
+        BindingNotUsed = wgpu::BufferBindingType::BindingNotUsed,
+        ReadOnlyStorage = wgpu::BufferBindingType::ReadOnlyStorage,
+        Storage = wgpu::BufferBindingType::Storage,
+        Uniform = wgpu::BufferBindingType::Uniform,
+	};
+
     class ParameterSet {
     public:
-        // Entry: explicit bindingType allows precise layout creation
         struct Entry {
-            krnl::Buffer* buffer;
-            wgpu::ShaderStage visibility = wgpu::ShaderStage::Compute;
-            wgpu::BufferBindingType bindingType = wgpu::BufferBindingType::ReadOnlyStorage;
+            krnl::Buffer& buffer;
+            krnl::BufferBindingType bindingType = krnl::BufferBindingType::BindingNotUsed;
         };
 
         ParameterSet() = delete;

@@ -22,18 +22,18 @@ namespace krnl {
 
         for (uint32_t i = 0; i < m_entries.size(); ++i) {
             const Entry& e = m_entries[i];
-            assert(e.buffer != nullptr && "ParameterSet entry buffer must not be null");
+            assert(&e.buffer != nullptr && "ParameterSet entry buffer must not be null");
 
             wgpu::BindGroupLayoutEntry be{};
             be.binding = i;
-            be.visibility = e.visibility;
+            be.visibility = wgpu::ShaderStage::Compute;
 
             // Use explicit bindingType provided by caller
-            be.buffer.type = e.bindingType;
+            be.buffer.type = static_cast<wgpu::BufferBindingType>(e.bindingType);
             be.buffer.hasDynamicOffset = false;
 
             // If uniform, set minBindingSize aligned to 256 for portability
-            if (e.bindingType == wgpu::BufferBindingType::Uniform) {
+            if (e.bindingType == krnl::BufferBindingType::Uniform) {
                 //be.buffer.minBindingSize = e.buffer->sizeAlignedToUniform();
             }
             else {
@@ -48,7 +48,7 @@ namespace krnl {
         desc.entries = layoutEntries.data();
 
         m_bindGroupLayout = m_device.GetNative().CreateBindGroupLayout(&desc);
-    }
+    }   
 
     void ParameterSet::buildBindGroup() {
         std::vector<wgpu::BindGroupEntry> entries;
@@ -56,13 +56,13 @@ namespace krnl {
 
         for (uint32_t i = 0; i < m_entries.size(); ++i) {
             const Entry& e = m_entries[i];
-            assert(e.buffer != nullptr);
+            assert(&e.buffer != nullptr);
 
             wgpu::BindGroupEntry ent{};
             ent.binding = i;
-            ent.buffer = e.buffer->GetNative();
+            ent.buffer = e.buffer.GetNative();
             ent.offset = 0;
-            ent.size = static_cast<uint64_t>(e.buffer->GetSize());
+            ent.size = static_cast<uint64_t>(e.buffer.GetSize());
             entries.push_back(ent);
         }
 
