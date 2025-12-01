@@ -2,47 +2,39 @@
 #include "core/log.h"
 #include <algorithm>
 #include <cstring>
+#include <string>
 
 namespace krnl {
 
     PersistentStagingPool::PersistentStagingPool(wgpu::Device device, const Config& cfg)
         : m_device(device), m_cfg(cfg)
     {
-        // reserve initial capacity
         m_ready.reserve(m_cfg.maxPoolSize);
         m_inflight.reserve(m_cfg.maxPoolSize * 2);
     }
 
     PersistentStagingPool::~PersistentStagingPool() {
-        // Ensure all buffers are destroyed / unmapped (Dawn will handle destruction on object destruction).
         purge();
     }
 
     StagingHandlePtr PersistentStagingPool::createStaging(size_t size) {
-        // Round up size to 256 or 4K to reduce fragmentation
         constexpr size_t ALIGN = 256;
         size = ((size + ALIGN - 1) / ALIGN) * ALIGN;
 
         wgpu::BufferDescriptor desc{};
         desc.size = size;
-        // MapWrite + CopySrc for upload staging.
+        // MapWrite + CopySrc for upload staging (mappedAtCreation=true)
         desc.usage = wgpu::BufferUsage::MapWrite | wgpu::BufferUsage::CopySrc;
         desc.mappedAtCreation = true;
 
-        // make label
         std::string label = std::string(m_cfg.labelPrefix) + "_upload";
         desc.label = label.c_str();
 
-        wgpu::Buffer staging = m_device.CreateBuffer(&desc);
-
-        // mappedAtCreation => GetMappedRange returns pointer
-        void* mapped = staging.GetMappedRange();
-        if (!mapped) {
-            KRNL_WARN("PersistentStagingPool::createStaging mappedAtCreation returned nullptr"<< size);
-        }
+        wgpu::Buffer b = m_device.CreateBuffer(&desc);
+        void* mapped = b.GetMappedRange();
 
         auto h = std::make_shared<StagingHandle>();
-        h->buffer = staging;
+        h->buffer = b;
         h->mappedPtr = mapped;
         h->size = size;
         h->forWrite = true;
@@ -50,42 +42,67 @@ namespace krnl {
         return h;
     }
 
+    StagingHandlePtr PersistentStagingPool::createReadbackStaging(size_t size) {
+        // Round to alignment
+        constexpr size_t ALIGN = 256;
+        size = ((size + ALIGN - 1) / ALIGN) * ALIGN;
+
+        wgpu::BufferDescriptor desc{};
+        desc.size = size;
+        // IMPORTANT FIX:
+        // For readback staging we MUST include CopyDst (so GPU can copy into it) AND
+        // include CopySrc when you may later use it as a source. MapRead is required to map it.
+        // Including CopySrc is safe and avoids usage validation errors if a copy-from-staging is ever performed.
+        desc.usage = wgpu::BufferUsage::MapRead | wgpu::BufferUsage::CopyDst | wgpu::BufferUsage::CopySrc;
+        desc.mappedAtCreation = false;
+
+        std::string label = std::string(m_cfg.labelPrefix) + "_readback";
+        desc.label = label.c_str();
+
+        wgpu::Buffer b = m_device.CreateBuffer(&desc);
+
+        auto h = std::make_shared<StagingHandle>();
+        h->buffer = b;
+        h->mappedPtr = nullptr;
+        h->size = size;
+        h->forWrite = false;
+        h->inUse = false;
+        return h;
+    }
+
     StagingHandlePtr PersistentStagingPool::allocate(size_t size) {
         if (m_cfg.threadSafe) m_mutex.lock();
 
-        // find a ready buffer >= requested size
-        auto it = std::find_if(m_ready.begin(), m_ready.end(), [size](const StagingHandlePtr& h) { return h->size >= size && !h->inUse; });
+        auto it = std::find_if(m_ready.begin(), m_ready.end(), [size](const StagingHandlePtr& h) {
+            return h->size >= size && !h->inUse;
+            });
+
         if (it != m_ready.end()) {
-            StagingHandlePtr ret = *it;
-            // remove from ready pool
+            auto h = *it;
             m_ready.erase(it);
-            ret->inUse = true;
+            h->inUse = true;
             if (m_cfg.threadSafe) m_mutex.unlock();
-            return ret;
+            return h;
         }
 
-        // if pool not full, make a new staging
         if (m_ready.size() + m_inflight.size() < m_cfg.maxPoolSize) {
-            StagingHandlePtr newStaging = createStaging(size);
+            auto newStaging = createStaging(size);
             newStaging->inUse = true;
             if (m_cfg.threadSafe) m_mutex.unlock();
             return newStaging;
         }
 
-        // Pool is full: try to re-use smallest ready or fall back to making a new one anyway
         if (!m_ready.empty()) {
-            // get the smallest adequate (or smallest available) and use it
             auto smallestIt = std::min_element(m_ready.begin(), m_ready.end(),
                 [](const StagingHandlePtr& a, const StagingHandlePtr& b) { return a->size < b->size; });
-            StagingHandlePtr ret = *smallestIt;
+            auto h = *smallestIt;
             m_ready.erase(smallestIt);
-            ret->inUse = true;
+            h->inUse = true;
             if (m_cfg.threadSafe) m_mutex.unlock();
-            return ret;
+            return h;
         }
 
-        // Last resort: create new staging even if over pool size
-        StagingHandlePtr newStaging = createStaging(size);
+        auto newStaging = createStaging(size);
         newStaging->inUse = true;
         if (m_cfg.threadSafe) m_mutex.unlock();
         return newStaging;
@@ -103,26 +120,26 @@ namespace krnl {
             return nullptr;
         }
         if (bytes > staging->size) {
-            KRNL_ERROR("submitUpload: bytes > staging size "<< bytes << staging->size);
+            KRNL_ERROR("submitUpload: bytes (%zu) > staging size (%zu)" << bytes << staging->size);
             return nullptr;
         }
 
         if (m_cfg.threadSafe) m_mutex.lock();
 
-        // Unmap the staging (it was mappedAtCreation). After Unmap it cannot be written until remapped.
+        // Unmap the staging (was mappedAtCreation)
         staging->buffer.Unmap();
 
-        // Create encoder & copy
+        // Encode copy: staging -> dstBuffer
         wgpu::CommandEncoderDescriptor encDesc{};
         wgpu::CommandEncoder encoder = m_device.CreateCommandEncoder(&encDesc);
         encoder.CopyBufferToBuffer(staging->buffer, 0, dstBuffer, static_cast<uint64_t>(dstOffset), static_cast<uint64_t>(bytes));
         wgpu::CommandBuffer cmd = encoder.Finish();
         queue.Submit(1, &cmd);
 
-        // keep the staging in in-flight list so it doesn't get destroyed
+        // Keep the staging alive
         m_inflight.push_back(staging);
 
-        // Create a replacement staging buffer mappedAtCreation to keep pool ready
+        // Create replacement staging buffer mappedAtCreation (if pool not saturated)
         StagingHandlePtr replacement = nullptr;
         if (m_ready.size() + m_inflight.size() < m_cfg.maxPoolSize + 4) {
             replacement = createStaging(bytes);
@@ -130,25 +147,88 @@ namespace krnl {
             m_ready.push_back(replacement);
         }
         else {
-            // pool saturated, do not create replacement now (will be created on demand in allocate)
             KRNL_WARN("PersistentStagingPool saturated; no replacement created");
         }
 
-        // Mark staging consumed
         staging->inUse = false;
 
         if (m_cfg.threadSafe) m_mutex.unlock();
 
-        // Optionally, cleanup old in-flight items if vector grows large
-        // Simple heuristic: keep in-flight limited to maxPoolSize*4; otherwise drop oldest
+        // Trim in-flight list occasionally (heuristic)
         if (m_inflight.size() > m_cfg.maxPoolSize * 8) {
-            // Note: we don't have an explicit GPU-completion check here; removing shared_ptr may free buffer while GPU still using it on some platforms.
-            // If you need stricter correctness, add fences or WaitIdle behavior per backend.
             m_inflight.erase(m_inflight.begin(), m_inflight.begin() + (m_inflight.size() / 2));
-            KRNL_WARN("PersistentStagingPool trimmed in-flight list; consider increasing pool size or adding completion tracking");
+            KRNL_WARN("PersistentStagingPool trimmed in-flight list");
         }
 
         return replacement;
+    }
+
+    StagingHandlePtr PersistentStagingPool::allocateForReadback(size_t size) {
+        // For readback we don't return a mapped pointer; caller will submit copy and then MapAsync.
+        if (m_cfg.threadSafe) m_mutex.lock();
+
+        // Try to find an unused readback staging in ready (we store both types together).
+        auto it = std::find_if(m_ready.begin(), m_ready.end(), [size](const StagingHandlePtr& h) {
+            return h->size >= size && !h->inUse && !h->forWrite;
+            });
+
+        if (it != m_ready.end()) {
+            auto h = *it;
+            m_ready.erase(it);
+            h->inUse = true;
+            if (m_cfg.threadSafe) m_mutex.unlock();
+            return h;
+        }
+
+        // Otherwise create a new readback staging
+        auto readStaging = createReadbackStaging(size);
+        readStaging->inUse = true;
+        if (m_cfg.threadSafe) m_mutex.unlock();
+        return readStaging;
+    }
+
+    void PersistentStagingPool::readbackInto(
+        wgpu::Buffer src,
+        size_t bytes,
+        size_t srcOffset,
+        wgpu::Queue queue,
+        std::function<void(const void* data, size_t size)> cb)
+    {
+        // Create a readback staging buffer (MapRead | CopyDst | CopySrc)
+        auto staging = createReadbackStaging(bytes);
+
+        // Encode copy: src -> staging
+        wgpu::CommandEncoderDescriptor encDesc{};
+        wgpu::CommandEncoder encoder = m_device.CreateCommandEncoder(&encDesc);
+        encoder.CopyBufferToBuffer(src, static_cast<uint64_t>(srcOffset), staging->buffer, 0, static_cast<uint64_t>(bytes));
+        wgpu::CommandBuffer cmd = encoder.Finish();
+        queue.Submit(1, &cmd);
+
+        // Keep staging alive with shared_ptr
+        auto stagingPtr = std::make_shared<wgpu::Buffer>(staging->buffer);
+
+        stagingPtr->MapAsync(
+            wgpu::MapMode::Read,
+            0,
+            bytes,
+            wgpu::CallbackMode::WaitAnyOnly,
+            [stagingPtr, cb, bytes](wgpu::MapAsyncStatus status, wgpu::StringView message) {
+                if (status != wgpu::MapAsyncStatus::Success) {
+                    KRNL_ERROR("PersistentStagingPool::readbackInto MapAsync failed");
+                    return;
+                }
+                const void* mapped = stagingPtr->GetConstMappedRange(0, bytes);
+                if (!mapped) {
+                    KRNL_ERROR("readbackInto -> GetConstMappedRange returned null");
+                    stagingPtr->Unmap();
+                    return;
+                }
+                cb(mapped, bytes);
+                stagingPtr->Unmap();
+            }
+        );
+
+        // Note: we don't track stagingPtr lifetime beyond this function; cb captures stagingPtr (if needed) via lambda.
     }
 
     void PersistentStagingPool::purge() {

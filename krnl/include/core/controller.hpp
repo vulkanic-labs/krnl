@@ -13,7 +13,7 @@ namespace krnl
 
 	private:
 		Context m_context;
-		std::unique_ptr<Device> m_device;
+		Device m_device;
 	};
 }
 

@@ -1,98 +1,77 @@
 ﻿#include "core/parameterset.hpp"
+#include "core/log.h"
 #include <cassert>
-#include <iostream>
+#include <vector>
 
 namespace krnl {
 
-    // -----------------------------------------------------------
-    // Constructor
-    // -----------------------------------------------------------
-    ParameterSet::ParameterSet(
-        wgpu::Device device,
-        const std::vector<Entry>& entries)
+    ParameterSet::ParameterSet(Device& device, const std::vector<Entry>& entries)
         : m_device(device), m_entries(entries)
     {
         buildLayout();
         buildBindGroup();
     }
 
-    // -----------------------------------------------------------
-    // update() → rebuild bindgroup
-    // -----------------------------------------------------------
     void ParameterSet::update() {
         buildBindGroup();
     }
 
-    // -----------------------------------------------------------
-    // Build BindGroupLayout based on buffer usage
-    // -----------------------------------------------------------
     void ParameterSet::buildLayout() {
         std::vector<wgpu::BindGroupLayoutEntry> layoutEntries;
         layoutEntries.reserve(m_entries.size());
 
-        uint32_t bindingIndex = 0;
+        for (uint32_t i = 0; i < m_entries.size(); ++i) {
+            const Entry& e = m_entries[i];
+            assert(e.buffer != nullptr && "ParameterSet entry buffer must not be null");
 
-        for (auto& e : m_entries) {
-            auto* buf = e.buffer;
-            assert(buf != nullptr);
+            wgpu::BindGroupLayoutEntry be{};
+            be.binding = i;
+            be.visibility = e.visibility;
 
-            wgpu::BindGroupLayoutEntry entry{};
-            entry.binding = bindingIndex;
-            entry.visibility = e.visibility;
+            // Use explicit bindingType provided by caller
+            be.buffer.type = e.bindingType;
+            be.buffer.hasDynamicOffset = false;
 
-            // Decide whether this buffer is uniform/storage/readwrite
-            if (buf->isUniform()) {
-                entry.buffer.type = wgpu::BufferBindingType::Uniform;
-                entry.buffer.minBindingSize = buf->sizeAlignedToUniform();
+            // If uniform, set minBindingSize aligned to 256 for portability
+            if (e.bindingType == wgpu::BufferBindingType::Uniform) {
+                //be.buffer.minBindingSize = e.buffer->sizeAlignedToUniform();
             }
-            else if (buf->isStorageRW()) {
-                entry.buffer.type = wgpu::BufferBindingType::Storage;
-                entry.buffer.minBindingSize = buf->size();
-            }
-            else { // default → read-only storage
-                entry.buffer.type = wgpu::BufferBindingType::ReadOnlyStorage;
-                entry.buffer.minBindingSize = buf->size();
+            else {
+                be.buffer.minBindingSize = 0;
             }
 
-            layoutEntries.push_back(entry);
-            bindingIndex++;
+            layoutEntries.push_back(be);
         }
 
         wgpu::BindGroupLayoutDescriptor desc{};
-        desc.entryCount = layoutEntries.size();
+        desc.entryCount = static_cast<uint32_t>(layoutEntries.size());
         desc.entries = layoutEntries.data();
 
-        m_bindGroupLayout = m_device.CreateBindGroupLayout(&desc);
+        m_bindGroupLayout = m_device.GetNative().CreateBindGroupLayout(&desc);
     }
 
-    // -----------------------------------------------------------
-    // Build BindGroup
-    // -----------------------------------------------------------
     void ParameterSet::buildBindGroup() {
         std::vector<wgpu::BindGroupEntry> entries;
         entries.reserve(m_entries.size());
 
-        uint32_t bindingIndex = 0;
+        for (uint32_t i = 0; i < m_entries.size(); ++i) {
+            const Entry& e = m_entries[i];
+            assert(e.buffer != nullptr);
 
-        for (auto& e : m_entries) {
-            auto* buf = e.buffer;
-
-            wgpu::BindGroupEntry entry{};
-            entry.binding = bindingIndex;
-            entry.buffer = buf->wgpuBuffer();
-            entry.offset = 0;
-            entry.size = buf->size();  // Dawn handles alignment
-
-            entries.push_back(entry);
-            bindingIndex++;
+            wgpu::BindGroupEntry ent{};
+            ent.binding = i;
+            ent.buffer = e.buffer->GetNative();
+            ent.offset = 0;
+            ent.size = static_cast<uint64_t>(e.buffer->GetSize());
+            entries.push_back(ent);
         }
 
         wgpu::BindGroupDescriptor desc{};
         desc.layout = m_bindGroupLayout;
-        desc.entryCount = entries.size();
+        desc.entryCount = static_cast<uint32_t>(entries.size());
         desc.entries = entries.data();
 
-        m_bindGroup = m_device.CreateBindGroup(&desc);
+        m_bindGroup = m_device.GetNative().CreateBindGroup(&desc);
     }
 
 } // namespace krnl

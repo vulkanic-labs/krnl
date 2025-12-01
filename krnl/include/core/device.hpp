@@ -7,9 +7,10 @@ namespace krnl
     class Device
     {
     public:
-        explicit Device(wgpu::Instance instance);
+        Device() = default;
+        Device(wgpu::Instance instance);
 		~Device() = default;
-        wgpu::Device get() const { return m_device; }
+        wgpu::Device GetNative() const { return m_device; }
 		wgpu::Queue getQueue() const { return m_device.GetQueue(); }
 
     private:
