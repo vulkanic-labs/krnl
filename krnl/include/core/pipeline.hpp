@@ -6,6 +6,7 @@
 #include "core/buffer.hpp"        // Buffer header (for type info if needed)
 #include "core/device.hpp"
 #include "core/shader.hpp"
+#include "core/commandlist.hpp"
 
 namespace krnl {
 
@@ -24,7 +25,7 @@ namespace krnl {
 
         // Encode a dispatch into an existing compute pass encoder.
         // This sets pipeline, bind group 0 (paramSet) and optionally issues push constants (if set).
-        void encodeDispatch(wgpu::ComputePassEncoder& pass, uint32_t x, uint32_t y = 1, uint32_t z = 1);
+        void encodeDispatch(const CommandList& cmd, uint32_t x, uint32_t y = 1, uint32_t z = 1);
 
         // Set push-constant data that will be applied on the next encodeDispatch call.
         // If backend doesn't support push constants, user will see a warning; fallback can be implemented.

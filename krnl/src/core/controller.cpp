@@ -8,6 +8,7 @@
 #include "core/pipeline.hpp"
 #include "core/stagingpool.hpp"
 #include "core/future.hpp"
+#include "core/commandlist.hpp"
 
 #include <memory>
 #include <webgpu/webgpu_cpp.h>
@@ -18,7 +19,6 @@ namespace krnl
 	Controller::Controller()
 	{
 		m_device = Device(m_instance);
-		wgpu::Queue queue = m_device.getQueue();
 
 		Shader computeShader = Shader::loadWGSL(m_device, R"(
 			@group(0) @binding(0) var<storage,read> inputBuffer: array<f32,64>;
@@ -56,21 +56,15 @@ namespace krnl
 
 		input.WriteBuffer(inputData.data(), bufferSize, 0);
 
-		// Command encoder & compute pass
-		wgpu::CommandEncoder encoder = m_device.GetNative().CreateCommandEncoder();
-		wgpu::ComputePassEncoder pass = encoder.BeginComputePass();
+		CommandList cmd(m_device);
+		cmd.BeginComputePass();
 		uint32_t workgroups = (64 + 31) / 32;
-		pipeline.encodeDispatch(pass, workgroups);
-		pass.End();
-		// Copy output to map buffer
-		encoder.CopyBufferToBuffer(
-			output.GetNative(), 0,
-			map.GetNative(), 0,
-			bufferSize
-		);
+		pipeline.encodeDispatch(cmd, workgroups);
+		cmd.EndComputePass();
 
-		wgpu::CommandBuffer cmd = encoder.Finish();
-		queue.Submit(1, &cmd);
+		cmd.CopyBufferToBuffer(output, map, bufferSize);
+
+		cmd.Submit();
 
 		std::vector<float> outputData(bufferSize / sizeof(float), 0.0f);
 		Future f = map.MapAsync(krnl::MapMode::Read, 0, bufferSize, outputData.data());
@@ -79,7 +73,10 @@ namespace krnl
 		for (size_t i = 0; i < inputData.size(); ++i)
 			std::cout << i + 1 << " : input " << inputData[i] << " became " << outputData[i] << std::endl;
 
-		m_instance.ProcessEvents();
+		while (true)
+		{
+			m_instance.ProcessEvents();
+		}
 
 
 		//// Readback

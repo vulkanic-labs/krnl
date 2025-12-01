@@ -62,12 +62,12 @@ namespace krnl {
 	}
 
 	/* encodeDispatch: set pipeline, bind group 0, optionally push constants, then dispatch */
-	void Pipeline::encodeDispatch(wgpu::ComputePassEncoder& pass, uint32_t x, uint32_t y, uint32_t z) {
+	void Pipeline::encodeDispatch(const CommandList& cmd, uint32_t x, uint32_t y, uint32_t z) {
 		// Set pipeline
-		pass.SetPipeline(m_pipeline);
+		cmd.GetComputePass().SetPipeline(m_pipeline);
 
 		// Set bind group 0 from parameter set
-		pass.SetBindGroup(0, m_params->bindGroup(), 0, nullptr);
+		cmd.GetComputePass().SetBindGroup(0, m_params->bindGroup(), 0, nullptr);
 
 		// Apply push constants if available
 		if (m_hasPushConstants && !m_pushData.empty()) {
@@ -86,6 +86,6 @@ namespace krnl {
 		}
 
 		// Dispatch
-		pass.DispatchWorkgroups(x, y, z);
+		cmd.GetComputePass().DispatchWorkgroups(x, y, z);
 	}
 } // namespace krnl
