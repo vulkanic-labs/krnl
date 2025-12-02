@@ -1,11 +1,9 @@
 #pragma once
 
-#include "core/controller.hpp"
-//#include "core/context.hpp"
-//#include "core/device.hpp"
-//#include "core/buffer.hpp"
-//#include "core/shader.hpp"
-//#include "core/log.h"
-
-// #include "core/pipeline.hpp"
-// #include "tensor/tensor.hpp"
+#include "core/instance.hpp"
+#include "core/future.hpp"
+#include "core/buffer.hpp"
+#include "core/parameterset.hpp"
+#include "core/commandlist.hpp"
+#include "core/pipeline.hpp"
+#include "core/shader.hpp"

@@ -8,7 +8,6 @@ namespace krnl
     class Device
     {
     public:
-        Device() = default;
         explicit Device(const Instance& instance);
 
         Device(Device&&) = default;
@@ -25,6 +24,7 @@ namespace krnl
         bool IsValid() const { return m_Device != nullptr; }
 
     private:
+        Device() = default;
         wgpu::Device m_Device;
 		wgpu::Queue m_Queue;
     };
