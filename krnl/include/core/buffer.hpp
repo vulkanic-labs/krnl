@@ -1,12 +1,13 @@
 #pragma once
 #include <webgpu/webgpu_cpp.h>
-#include "core/device.hpp"
-#include "core/future.hpp"
 #include <cstddef>
 #include <vector>
 #include <functional>
 #include <memory>
 #include <string>
+
+#include "core/device.hpp"
+#include "core/future.hpp"
 
 namespace krnl {
 
@@ -44,65 +45,37 @@ namespace krnl {
 
     class Buffer {
     public:
-        //enum class Type {
-        //    Storage,
-        //    Uniform,
-        //    MapRead,   // GPU buffer intended to be copied from (CopySrc)
-        //    MapWrite,  // staging buffer mapped at creation for uploads (MapWrite|CopySrc)
-        //    Staging     // generic staging
-        //};
-
-        //using ReadCallback = std::function<void(const void* data, size_t size)>;
-
-        // Factories
-        //static Buffer CreateStorage(wgpu::Device device, size_t sizeBytes, const char* label = nullptr , wgpu::BufferUsage usageflag = wgpu::BufferUsage::None);
-        /*static Buffer CreateUniform(wgpu::Device device, size_t sizeBytes, const char* label = nullptr);
-        static Buffer CreateMapRead(wgpu::Device device, size_t sizeBytes, const char* label = nullptr);
-        static Buffer CreateMapWrite(wgpu::Device device, size_t sizeBytes, const char* label = nullptr);
-        static Buffer CreateStaging(wgpu::Device device, size_t sizeBytes, bool forWrite, const char* label = nullptr);*/
+        using ReadCallback = std::function<void(const void* data, size_t size)>;
 
         Buffer() = default;
-        //Buffer(wgpu::Device device, wgpu::Buffer buffer, size_t sizeBytes, Type type, wgpu::BufferUsage usage);
-		Buffer(Device& device, size_t sizeBytes, BufferUsageType usage, std::string label , bool mappedAtCreation = false);
+		Buffer(const Device& device, size_t sizeBytes, BufferUsageType usage, std::string label , bool mappedAtCreation = false);
 
 		Future MapAsync(MapMode mode, size_t offset, size_t size ,void* data);
 		void WriteBuffer(const void* src, size_t bytes, size_t dstOffset = 0);
 
-        wgpu::Buffer GetNative() const { return m_Buffer; }
+        const wgpu::Buffer GetNative() const { return m_Buffer; }
         size_t GetSize() const { return m_size; }
 
-        //// Fast write (queue.WriteBuffer). Good for small updates.
-        //void write(const void* src, size_t bytes, size_t dstOffset = 0);
-
         //// High-performance write using mapped staging (create MapWrite staging, copy, submit)
-        //void writeViaStaging(const void* src, size_t bytes, wgpu::Queue queue);
+        void WriteViaStaging(const void* src, size_t bytes);
 
         //// Async readback: copies into MapRead staging, maps it and calls cb with mapped data.
-        //void readAsync(wgpu::Device device, wgpu::Queue queue, ReadCallback cb);
-
-
-        //// Helpers for bind creation
-        //wgpu::BindGroupLayoutEntry bindGroupLayoutEntry(uint32_t binding, wgpu::ShaderStage visibility) const;
-        //wgpu::BindGroupEntry bindGroupEntry(uint32_t binding) const;
+        void ReadAsync(ReadCallback cb);
 
         //// Utility
-        //uint64_t sizeAlignedToUniform() const {
-        //    constexpr uint64_t ALIGN = 256u;
-        //    uint64_t s = static_cast<uint64_t>(m_size);
-        //    return ((s + ALIGN - 1) / ALIGN) * ALIGN;
-        //}
-
-        //// Label
-        //void setLabel(const char* label);
+        uint64_t sizeAlignedToUniform() const {
+            constexpr uint64_t ALIGN = 256u;
+            uint64_t s = static_cast<uint64_t>(m_size);
+            return ((s + ALIGN - 1) / ALIGN) * ALIGN;
+        }
 
     private:
-        //static wgpu::BufferUsage usageForType(Type t, bool forWrite = true);
          wgpu::BufferDescriptor makeDesc(size_t size, wgpu::BufferUsage usage, const char* label, bool mappedAtCreation = false);
 
     private:
         BufferUsageType m_BufferUsageType;
 		std::string m_Label;
-        Device& m_Device;
+        const Device& m_Device;
         size_t m_size = 0;
         wgpu::Buffer m_Buffer;
     };

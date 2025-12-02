@@ -8,37 +8,31 @@ namespace krnl {
 
     class CommandList {
     public:
-        CommandList(Device& device)
-            : m_device(device), m_encoder(device.GetNative().CreateCommandEncoder()) {
+        CommandList(const Device& device)
+            : m_Device(device), m_Encoder(device.GetNative().CreateCommandEncoder()) {
         }
 
         ~CommandList() = default;
 
-        // No copying
         CommandList(const CommandList&) = delete;
         CommandList& operator=(const CommandList&) = delete;
-
-        // Moves allowed
         CommandList(CommandList&&) = default;
 
-        // ---- Compute pass ----
         void BeginComputePass();
         void EndComputePass();
 
-        // ---- Copy operations ----
         void CopyBufferToBuffer(const Buffer& src, const Buffer& dst, size_t size);
 
-        // ---- Finalize ----
         wgpu::CommandBuffer Finish();
         void Submit();
 
-		const wgpu::CommandEncoder& GetEncoder() const { return m_encoder; }
-		const wgpu::ComputePassEncoder& GetComputePass() const { return m_computePass; }
+		const wgpu::CommandEncoder& GetEncoder() const { return m_Encoder; }
+		const wgpu::ComputePassEncoder& GetComputePass() const { return m_ComputePass; }
 
     private:
-        Device& m_device;
-        wgpu::CommandEncoder m_encoder;
-        wgpu::ComputePassEncoder m_computePass;
+        const Device& m_Device;
+        wgpu::CommandEncoder m_Encoder;
+        wgpu::ComputePassEncoder m_ComputePass;
     };
 
 } // namespace krnl
