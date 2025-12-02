@@ -59,9 +59,11 @@ namespace krnl
 					KRNL_ERROR("RequestDevice: " << message);
 					exit(0);
 				}
-				this->m_device = std::move(d);
+				this->m_Device = std::move(d);
 			});
 		instance.WaitAny(f2, UINT64_MAX);
+
+		m_Queue = m_Device.GetQueue();
 
 		KRNL_LOG("Device acquired successfully");
 	}

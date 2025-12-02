@@ -9,14 +9,24 @@ namespace krnl
     {
     public:
         Device() = default;
-        Device(const Instance& instance);
+        explicit Device(const Instance& instance);
+
+        Device(Device&&) = default;
+        Device& operator=(Device&&) = default;
+
+        Device(const Device&) = delete;
+        Device& operator=(const Device&) = delete;
+
+
 		~Device() = default;
-        wgpu::Device GetNative() const { return m_device; }
-		wgpu::Queue getQueue() const { return m_device.GetQueue(); }
+        const wgpu::Device GetNative() const { return m_Device; }
+		const wgpu::Queue getQueue() const { return m_Queue; }
+
+        bool IsValid() const { return m_Device != nullptr; }
 
     private:
-        wgpu::Device m_device;
-		wgpu::Queue m_queue;
+        wgpu::Device m_Device;
+		wgpu::Queue m_Queue;
     };
 
 } // namespace krnl

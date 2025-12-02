@@ -22,23 +22,23 @@ namespace krnl {
         };
 
         ParameterSet() = delete;
-        ParameterSet(Device& device, const std::vector<Entry>& entries);
+        ParameterSet(const Device& device, const std::vector<Entry>& entries);
 
         // Rebuild bind group if buffers/entries changed
         void update();
 
-        const wgpu::BindGroup& bindGroup() const { return m_bindGroup; }
-        const wgpu::BindGroupLayout& layout() const { return m_bindGroupLayout; }
+        const wgpu::BindGroup& bindGroup() const { return m_BindGroup; }
+        const wgpu::BindGroupLayout& layout() const { return m_BindGroupLayout; }
 
     private:
         void buildLayout();
         void buildBindGroup();
 
-        Device m_device;
-        std::vector<Entry> m_entries;
+        const Device& m_Device;
+        const std::vector<Entry>& m_Entries;
 
-        wgpu::BindGroupLayout m_bindGroupLayout;
-        wgpu::BindGroup m_bindGroup;
+        wgpu::BindGroupLayout m_BindGroupLayout;
+        wgpu::BindGroup m_BindGroup;
     };
 
 } // namespace krnl

@@ -9,7 +9,7 @@ namespace krnl
 
     Instance::Instance()
     {
-        static const auto kTimedWaitAny = wgpu::InstanceFeatureName::TimedWaitAny;
+        const auto kTimedWaitAny = wgpu::InstanceFeatureName::TimedWaitAny;
         wgpu::InstanceDescriptor desc = {.requiredFeatureCount = 1,
                                          .requiredFeatures = &kTimedWaitAny};
         m_Instance = wgpu::CreateInstance(&desc);

@@ -5,8 +5,8 @@
 
 namespace krnl {
 
-    ParameterSet::ParameterSet(Device& device, const std::vector<Entry>& entries)
-        : m_device(device), m_entries(entries)
+    ParameterSet::ParameterSet(const Device& device, const std::vector<Entry>& entries)
+        : m_Device(device), m_Entries(entries)
     {
         buildLayout();
         buildBindGroup();
@@ -18,10 +18,10 @@ namespace krnl {
 
     void ParameterSet::buildLayout() {
         std::vector<wgpu::BindGroupLayoutEntry> layoutEntries;
-        layoutEntries.reserve(m_entries.size());
+        layoutEntries.reserve(m_Entries.size());
 
-        for (uint32_t i = 0; i < m_entries.size(); ++i) {
-            const Entry& e = m_entries[i];
+        for (uint32_t i = 0; i < m_Entries.size(); ++i) {
+            const Entry& e = m_Entries[i];
             assert(&e.buffer != nullptr && "ParameterSet entry buffer must not be null");
 
             wgpu::BindGroupLayoutEntry be{};
@@ -47,15 +47,15 @@ namespace krnl {
         desc.entryCount = static_cast<uint32_t>(layoutEntries.size());
         desc.entries = layoutEntries.data();
 
-        m_bindGroupLayout = m_device.GetNative().CreateBindGroupLayout(&desc);
+        m_BindGroupLayout = m_Device.GetNative().CreateBindGroupLayout(&desc);
     }   
 
     void ParameterSet::buildBindGroup() {
         std::vector<wgpu::BindGroupEntry> entries;
-        entries.reserve(m_entries.size());
+        entries.reserve(m_Entries.size());
 
-        for (uint32_t i = 0; i < m_entries.size(); ++i) {
-            const Entry& e = m_entries[i];
+        for (uint32_t i = 0; i < m_Entries.size(); ++i) {
+            const Entry& e = m_Entries[i];
             assert(&e.buffer != nullptr);
 
             wgpu::BindGroupEntry ent{};
@@ -67,11 +67,11 @@ namespace krnl {
         }
 
         wgpu::BindGroupDescriptor desc{};
-        desc.layout = m_bindGroupLayout;
+        desc.layout = m_BindGroupLayout;
         desc.entryCount = static_cast<uint32_t>(entries.size());
         desc.entries = entries.data();
 
-        m_bindGroup = m_device.GetNative().CreateBindGroup(&desc);
+        m_BindGroup = m_Device.GetNative().CreateBindGroup(&desc);
     }
 
 } // namespace krnl
