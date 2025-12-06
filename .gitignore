@@ -3,3 +3,4 @@ out
 .vs
 *.sln
 .cpmcache/*
+bindings/python/.cpmcache/*

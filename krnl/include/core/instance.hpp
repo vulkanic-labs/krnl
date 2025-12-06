@@ -1,9 +1,12 @@
 #pragma once
 #include <webgpu/webgpu_cpp.h>
+#include <memory>
 #include "core/future.hpp"
 
 namespace krnl
 {
+	struct InstanceImpl;
+
 	class Instance
 	{
 	public:
@@ -18,6 +21,7 @@ namespace krnl
 
 		const wgpu::Instance& GetNative() const { return m_Instance; }
 	private:
+		std::unique_ptr <InstanceImpl> m_Impl;
 		wgpu::Instance m_Instance;
 	};
 
